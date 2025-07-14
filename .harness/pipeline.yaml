@@ -1,0 +1,54 @@
+pipeline:
+  name: kong-konnect-sync
+  identifier: kong_konnect_sync
+  projectIdentifier: kong_project
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.GithubConnector
+        repoName: kong-devops-terraform
+        build:
+          type: branch
+          spec:
+            branch: main
+  stages:
+    - stage:
+        name: Terraform Sync
+        identifier: terraform_sync
+        type: CI
+        spec:
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-delegate-ng
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Generate Services JSON
+                  identifier: generate_services
+                  spec:
+                    shell: Bash
+                    command: |
+                      python3 generate-services-json.py
+              - step:
+                  type: Run
+                  name: Terraform Init
+                  identifier: terraform_init
+                  spec:
+                    shell: Bash
+                    command: terraform init
+              - step:
+                  type: Run
+                  name: Terraform Apply
+                  identifier: terraform_apply
+                  spec:
+                    shell: Bash
+                    command: |
+                      terraform apply -auto-approve -var="environment=dev" \
+                        -var="kong_admin_url=https://admin.dev.konghq.com" \
+                        -var="kong_cp_id=cp-dev-id" \
+                        -var="service_suffix=-dev"
